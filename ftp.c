@@ -13,7 +13,7 @@
 
 static struct plugins_module ftp_plugin = {
 	.name = "ftp",
-	.version = "v1.0.0",
+	.version = "v1.0.1",
 	.author = "malongwei"
 };
 
