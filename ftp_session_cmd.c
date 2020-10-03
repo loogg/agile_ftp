@@ -527,18 +527,68 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     send(session->fd, reply, strlen(reply), 0);
 
     int recv_bytes = 0;
+    int result = RT_EOK;
     while((recv_bytes = fread(reply, 1, 4096, fp)) > 0)
-        send(session->port_pasv_fd, reply, recv_bytes, 0);
+    {
+        if(send(session->port_pasv_fd, reply, recv_bytes, 0) != recv_bytes)
+        {
+            result = -RT_ERROR;
+            break;
+        }
+    }
 
     rt_free(reply);
     fclose(fp);
     close(session->port_pasv_fd);
     session->port_pasv_fd = -1;
 
+    if(result != RT_EOK)
+        return -RT_ERROR;
+
     reply = "226 Finished.\r\n";
     send(session->fd, reply, strlen(reply), 0);
     session->offset = 0;
     return RT_EOK;
+}
+
+static int stor_cmd_receive(int socket, uint8_t *buf, int bufsz, int timeout)
+{
+    if((socket < 0) || (buf == RT_NULL) || (bufsz <= 0) || (timeout <= 0))
+        return -RT_ERROR;
+    
+    int len = 0;
+    int rc = 0;
+    fd_set rset;
+    struct timeval tv;
+
+    FD_ZERO(&rset);
+    FD_SET(socket, &rset);
+    tv.tv_sec = timeout / 1000;
+    tv.tv_usec = (timeout % 1000) * 1000;
+
+    while(bufsz > 0)
+    {
+        rc = select(socket + 1, &rset, RT_NULL, RT_NULL, &tv);
+        if(rc <= 0)
+            break;
+        
+        rc = recv(socket, buf + len, bufsz, MSG_DONTWAIT);
+        if(rc <= 0)
+            break;
+        
+        len += rc;
+        bufsz -= rc;
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 20000;
+        FD_ZERO(&rset);
+        FD_SET(socket, &rset);
+    }
+
+    if(rc >= 0)
+        rc = len;
+
+    return rc;
 }
 
 static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
@@ -588,26 +638,11 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(reply, 4096, "150 Opening binary mode data connection for \"%s\".\r\n", path);
     send(session->fd, reply, strlen(reply), 0);
 
-    fd_set readset;
-    struct timeval tv;
-    tv.tv_sec = 3;
-    tv.tv_usec = 0;
-
     int result = RT_EOK;
+    int timeout = 3000;
     while(1)
     {
-        FD_ZERO(&readset);
-        FD_SET(session->port_pasv_fd, &readset);
-
-        int rc = select(session->port_pasv_fd + 1, &readset, RT_NULL, RT_NULL, &tv);
-        if(rc < 0)
-        {
-            result = -RT_ERROR;
-            break;
-        }
-        if(rc == 0)
-            break;
-        int recv_bytes = recv(session->port_pasv_fd, reply, 4096, MSG_DONTWAIT);
+        int recv_bytes = stor_cmd_receive(session->port_pasv_fd, reply, 4096, timeout);
         if(recv_bytes < 0)
         {
             result = -RT_ERROR;
@@ -615,12 +650,13 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         }
         if(recv_bytes == 0)
             break;
-        
         if(fwrite(reply, recv_bytes, 1, fp) != 1)
         {
             result = -RT_ERROR;
             break;
         }
+
+        timeout = 20;
     }
 
     rt_free(reply);
