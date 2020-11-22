@@ -123,5 +123,9 @@ int ftp_init(rt_uint32_t stack_size, rt_uint8_t priority, rt_uint32_t tick)
     RT_ASSERT(tid != RT_NULL);
     rt_thread_startup(tid);
 
+    rt_kprintf("\r\n[FTP] Powered by Ma Longwei\r\n");
+    rt_kprintf("[FTP] github: https://github.com/loogg\r\n");
+    rt_kprintf("[FTP] Email: 2544047213@qq.com\r\n");
+
     return RT_EOK;
 }
