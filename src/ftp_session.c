@@ -21,7 +21,7 @@
 #endif
 
 #ifndef FTP_SESSION_TIMEOUT
-#define FTP_SESSION_TIMEOUT             10
+#define FTP_SESSION_TIMEOUT             3
 #endif
 
 static int ftp_max_session_num = FTP_MAX_SESSION_NUM;
