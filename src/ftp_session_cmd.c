@@ -2,7 +2,93 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include "ftp_session_cmd.h"
-#include "fs_operation.h"
+
+static int ftp_create_dir(const char *path)
+{
+    int result = RT_EOK;
+
+    DIR *dir = opendir(path);
+    if(dir == RT_NULL)
+    {
+        if(mkdir(path, 0x777) != 0)
+            result = -RT_ERROR;
+    }
+    else
+        closedir(dir);
+
+    return result;
+}
+
+static char* ftp_normalize_path(char* fullpath)
+{
+    char *dst0, *dst, *src;
+
+    src = fullpath;
+    dst = fullpath;
+
+    dst0 = dst;
+    while (1)
+    {
+        char c = *src;
+
+        if (c == '.')
+        {
+            if (!src[1]) src ++; /* '.' and ends */
+            else if (src[1] == '/')
+            {
+                /* './' case */
+                src += 2;
+
+                while ((*src == '/') && (*src != '\0')) src ++;
+                continue;
+            }
+            else if (src[1] == '.')
+            {
+                if (!src[2])
+                {
+                    /* '..' and ends case */
+                    src += 2;
+                    goto up_one;
+                }
+                else if (src[2] == '/')
+                {
+                    /* '../' case */
+                    src += 3;
+
+                    while ((*src == '/') && (*src != '\0')) src ++;
+                    goto up_one;
+                }
+            }
+        }
+
+        /* copy up the next '/' and erase all '/' */
+        while ((c = *src++) != '\0' && c != '/') *dst ++ = c;
+
+        if (c == '/')
+        {
+            *dst ++ = '/';
+            while (c == '/') c = *src++;
+
+            src --;
+        }
+        else if (!c) break;
+
+        continue;
+
+up_one:
+        dst --;
+        if (dst < dst0) return RT_NULL;
+        while (dst0 < dst && dst[-1] != '/') dst --;
+    }
+
+    *dst = '\0';
+
+    /* remove '/' in the end of path if exist */
+    dst --;
+    if ((dst != fullpath) && (*dst == '/')) *dst = '\0';
+
+    return fullpath;
+}
 
 static int port_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 {
@@ -230,7 +316,7 @@ static int build_full_path(char *buf, int bufsz, const char *path)
         strncat(buf, path, remain_len);
     }
 
-    if(fs_normalize_path(buf) == RT_NULL)
+    if(ftp_normalize_path(buf) == RT_NULL)
         return -RT_ERROR;
     
     return RT_EOK;
@@ -317,7 +403,7 @@ static int mkd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     if(reply == RT_NULL)
         return -RT_ERROR;
 
-    if(fs_create_dir(path) != RT_EOK)
+    if(ftp_create_dir(path) != RT_EOK)
         snprintf(reply, 1024, "550 directory \"%s\" create error.\r\n", path);
     else
         snprintf(reply, 1024, "257 directory \"%s\" successfully created.\r\n", path);

@@ -4,12 +4,90 @@
 #include "ftp_session.h"
 #include "ftp_session_cmd.h"
 
-#define MAX_CLIENT_NUM      10
-#define FTP_USER            "rtt"
-#define FTP_PASSWORD        "demo"
-#define FTP_WELCOME_MSG		"220 -= welcome on RT-Thread FTP server =-\r\n"
+#ifndef FTP_MAX_SESSION_NUM
+#define FTP_MAX_SESSION_NUM             10
+#endif
 
+#ifndef FTP_SESSION_USERNAME
+#define FTP_SESSION_USERNAME            "loogg"
+#endif
+
+#ifndef FTP_SESSION_PASSWORD
+#define FTP_SESSION_PASSWORD            "loogg"
+#endif
+
+#ifndef FTP_SESSION_WELCOME_MSG
+#define FTP_SESSION_WELCOME_MSG		    "220 -= welcome on RT-Thread FTP server =-\r\n"
+#endif
+
+#ifndef FTP_SESSION_TIMEOUT
+#define FTP_SESSION_TIMEOUT             30
+#endif
+
+static int ftp_max_session_num = FTP_MAX_SESSION_NUM;
+static char ftp_session_username[64] = FTP_SESSION_USERNAME;
+static char ftp_session_password[64] = FTP_SESSION_PASSWORD;
+static char ftp_session_welcome_msg[100] = FTP_SESSION_WELCOME_MSG;
 static rt_slist_t session_header = RT_SLIST_OBJECT_INIT(session_header);
+
+int ftp_get_max_session_num(void)
+{
+    return ftp_max_session_num;
+}
+
+int ftp_set_max_session_num(int num)
+{
+    if(num <= 0)
+        return -RT_ERROR;
+    
+    ftp_max_session_num = num;
+    return RT_EOK;
+}
+
+const char *ftp_get_session_username(void)
+{
+    return ftp_session_username;
+}
+
+int ftp_set_session_username(const char *username)
+{
+    if(username == RT_NULL)
+        return -RT_ERROR;
+    
+    rt_strncpy(ftp_session_username, username, sizeof(ftp_session_username) - 1);
+    ftp_session_username[sizeof(ftp_session_username) - 1] = '\0';
+    return RT_EOK;
+}
+
+const char *ftp_get_session_password(void)
+{
+    return ftp_session_password;
+}
+
+int ftp_set_session_password(const char *password)
+{
+    if(password == RT_NULL)
+        return -RT_ERROR;
+
+    rt_strncpy(ftp_session_password, password, sizeof(ftp_session_password) - 1);
+    ftp_session_password[sizeof(ftp_session_password) - 1] = '\0';
+    return RT_EOK;
+}
+
+const char *ftp_get_session_welcome_msg(void)
+{
+    return ftp_session_welcome_msg;
+}
+
+int ftp_set_session_welcome_msg(const char *welcome_msg)
+{
+    if(welcome_msg == RT_NULL)
+        return -RT_ERROR;
+    
+    rt_strncpy(ftp_session_welcome_msg, welcome_msg, sizeof(ftp_session_welcome_msg) - 1);
+    ftp_session_welcome_msg[sizeof(ftp_session_welcome_msg) - 1] = '\0';
+    return RT_EOK;
+}
 
 static int ftp_session_get_num(void)
 {
@@ -95,7 +173,6 @@ static int ftp_session_process(struct ftp_session * session, char *cmd_buf)
 		ptr ++;
 	}
 
-    int tick_timeout = 3;
     char *cmd = cmd_buf;
     char *cmd_param = strchr(cmd, ' ');
     if(cmd_param)
@@ -124,7 +201,7 @@ static int ftp_session_process(struct ftp_session * session, char *cmd_buf)
                 break;
             }
 
-            if(strcmp(cmd_param, FTP_USER) == 0)
+            if(strcmp(cmd_param, ftp_session_username) == 0)
             {
                 session->is_anonymous = 0;
                 char *reply = "331 Password required.\r\n";
@@ -148,7 +225,7 @@ static int ftp_session_process(struct ftp_session * session, char *cmd_buf)
                 break;
             }
 
-            if(session->is_anonymous || (strcmp(cmd_param, FTP_PASSWORD) == 0))
+            if(session->is_anonymous || (strcmp(cmd_param, ftp_session_password) == 0))
             {
                 char *reply = "230 User logged in\r\n";
                 send(session->fd, reply, strlen(reply), 0);
@@ -180,7 +257,7 @@ static int ftp_session_process(struct ftp_session * session, char *cmd_buf)
         break;
     }
 
-    session->tick_timeout = rt_tick_get() + rt_tick_from_millisecond(tick_timeout * 1000);
+    session->tick_timeout = rt_tick_get() + rt_tick_from_millisecond(FTP_SESSION_TIMEOUT * 1000);
 
     return result;
 }
@@ -200,7 +277,7 @@ static void ftp_client_entry(void *parameter)
     session->is_anonymous = 0;
     session->offset = 0;
     session->state = FTP_SESSION_STATE_USER;
-    session->tick_timeout = rt_tick_get() + rt_tick_from_millisecond(3000);
+    session->tick_timeout = rt_tick_get() + rt_tick_from_millisecond(FTP_SESSION_TIMEOUT * 1000);
 
     char cmd_buf[1024];
 
@@ -211,10 +288,13 @@ static void ftp_client_entry(void *parameter)
     select_timeout.tv_sec = 1;
     select_timeout.tv_usec = 0;
 
-    send(session->fd, FTP_WELCOME_MSG, strlen(FTP_WELCOME_MSG), 0);
+    send(session->fd, ftp_session_welcome_msg, strlen(ftp_session_welcome_msg), 0);
 
     while(1)
     {
+        if(session->force_quit)
+            break;
+
         FD_ZERO(&readset);
         FD_ZERO(&exceptset);
 
@@ -252,7 +332,7 @@ int ftp_session_create(int fd, struct sockaddr_in *addr, socklen_t addr_len)
     if(fd < 0)
         return -RT_ERROR;
     
-    if(ftp_session_get_num() >= MAX_CLIENT_NUM)
+    if(ftp_session_get_num() >= ftp_max_session_num)
         return -RT_ERROR;
     
     struct ftp_session *session = rt_malloc(sizeof(struct ftp_session));
@@ -269,6 +349,20 @@ int ftp_session_create(int fd, struct sockaddr_in *addr, socklen_t addr_len)
     rt_thread_t tid = rt_thread_create("ftpc", ftp_client_entry, session, 4096, 27, 100);
     RT_ASSERT(tid != RT_NULL);
     rt_thread_startup(tid);
+
+    return RT_EOK;
+}
+
+int ftp_session_force_quit(void)
+{
+    rt_slist_t *node;
+    rt_base_t level = rt_hw_interrupt_disable();
+    rt_slist_for_each(node, &session_header)
+    {
+        struct ftp_session *session = rt_slist_entry(node, struct ftp_session, slist);
+        session->force_quit = 1;
+    }
+    rt_hw_interrupt_enable(level);
 
     return RT_EOK;
 }

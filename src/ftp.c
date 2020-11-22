@@ -1,5 +1,3 @@
-#include "init_module.h"
-#include "plugins.h"
 #include <dfs_posix.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -9,20 +7,34 @@
 #define DBG_LVL DBG_INFO
 #include <rtdbg.h>
 
-#define DEFAULT_PORT        21
+#ifndef FTP_DEFAULT_PORT
+#define FTP_DEFAULT_PORT        21
+#endif
 
-static struct plugins_module ftp_plugin = {
-	.name = "ftp",
-	.version = "v1.0.1",
-	.author = "malongwei"
-};
+static int ftp_port = FTP_DEFAULT_PORT;
+static rt_uint8_t force_restart = 0; 
 
-static struct init_module ftp_init_module;
+int ftp_force_restart(void)
+{
+    force_restart = 1;
+    return RT_EOK;
+}
+
+int ftp_get_port(void)
+{
+    return ftp_port;
+}
+
+int ftp_set_port(int port)
+{
+    if((port <= 0) || (port > 65535))
+        return -RT_ERROR;
+    ftp_port = port;
+    return RT_EOK;
+}
 
 static void ftp_entry(void *parameter)
 {
-    ftp_plugin.state = PLUGINS_STATE_RUNNING;
-
     int server_fd = -1;
     int enable = 1;
     uint32_t loption = 1;
@@ -48,7 +60,7 @@ _ftp_start:
     
     rt_memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(DEFAULT_PORT);
+    addr.sin_port = htons(ftp_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         goto _ftp_restart;
@@ -58,8 +70,16 @@ _ftp_start:
     
     ioctlsocket(server_fd, FIONBIO, &loption);
 
+    LOG_I("service launched success.");
     while(1)
     {
+        if(force_restart)
+        {
+            force_restart = 0;
+            ftp_session_force_quit();
+            break;
+        }
+
         FD_ZERO(&readset);
         FD_ZERO(&exceptset);
 
@@ -86,31 +106,22 @@ _ftp_start:
     }
 
 _ftp_restart:
+    LOG_W("service go wrong, now wait restarting...");
     if(server_fd >= 0)
     {
         close(server_fd);
         server_fd = -1;
     }
 
-    rt_thread_mdelay(10000);
+    rt_thread_mdelay(1000);
     goto _ftp_start;
 }
 
-static int ftp_init(void)
+int ftp_init(rt_uint32_t stack_size, rt_uint8_t priority, rt_uint32_t tick)
 {
-    rt_thread_t tid = rt_thread_create("ftp", ftp_entry, RT_NULL, 2048, 27, 100);
+    rt_thread_t tid = rt_thread_create("ftp", ftp_entry, RT_NULL, stack_size, priority, tick);
     RT_ASSERT(tid != RT_NULL);
     rt_thread_startup(tid);
-
-    return RT_EOK;
-}
-
-int fregister(const char *path, void *dlmodule, uint8_t is_sys)
-{
-    plugins_register(&ftp_plugin, path, dlmodule, is_sys);
-
-    ftp_init_module.init = ftp_init;
-    init_module_app_register(&ftp_init_module);
 
     return RT_EOK;
 }

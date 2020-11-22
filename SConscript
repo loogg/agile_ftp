@@ -1,9 +1,10 @@
 from building import *
+import rtconfig
 
-src = Glob('*.c') + Glob('*.cpp')
+src = Glob('src/*.c')
 cwd = GetCurrentDir()
+CPPPATH = [cwd + '/inc']
 
-CPPPATH = [cwd]
-group = DefineGroup('', src, depend = [''], CPPPATH=CPPPATH)
+group = DefineGroup('FTP', src, depend = [''], CPPPATH=CPPPATH)
 
 Return('group')

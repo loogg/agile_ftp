@@ -20,10 +20,13 @@ struct ftp_session
     struct sockaddr_in remote;
     enum ftp_session_state state;
     char currentdir[256];
+    rt_uint8_t force_quit;
     rt_tick_t tick_timeout;
     rt_slist_t slist;
 };
 
+
 int ftp_session_create(int fd, struct sockaddr_in *addr, socklen_t addr_len);
+int ftp_session_force_quit(void);
 
 #endif
