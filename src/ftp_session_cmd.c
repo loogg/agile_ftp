@@ -665,8 +665,8 @@ static int stor_cmd_receive(int socket, uint8_t *buf, int bufsz, int timeout)
         len += rc;
         bufsz -= rc;
 
-        tv.tv_sec = 0;
-        tv.tv_usec = 20000;
+        tv.tv_sec = 3;
+        tv.tv_usec = 0;
         FD_ZERO(&rset);
         FD_SET(socket, &rset);
     }
@@ -742,7 +742,7 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
             break;
         }
 
-        timeout = 20;
+        timeout = 3000;
     }
 
     rt_free(reply);
