@@ -1,4 +1,5 @@
 #include <dfs_posix.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include "ftp_session.h"

@@ -1,4 +1,5 @@
 #include <dfs_posix.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include "ftp_session_cmd.h"
@@ -728,7 +729,7 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     int timeout = 3000;
     while(1)
     {
-        int recv_bytes = stor_cmd_receive(session->port_pasv_fd, reply, 4096, timeout);
+        int recv_bytes = stor_cmd_receive(session->port_pasv_fd, (uint8_t *)reply, 4096, timeout);
         if(recv_bytes < 0)
         {
             result = -RT_ERROR;
