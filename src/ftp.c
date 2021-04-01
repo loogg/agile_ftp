@@ -37,7 +37,7 @@ static void ftp_entry(void *parameter)
 {
     int server_fd = -1;
     int enable = 1;
-    uint32_t loption = 1;
+    int flags;
     struct sockaddr_in addr;
     socklen_t addrlen;
 
@@ -67,8 +67,10 @@ _ftp_start:
     
     if(listen(server_fd, 1) < 0)
         goto _ftp_restart;
-    
-    ioctlsocket(server_fd, FIONBIO, &loption);
+
+    flags = fcntl(server_fd, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    fcntl(server_fd, F_SETFL, flags);
 
     LOG_I("service launched success.");
     while(1)

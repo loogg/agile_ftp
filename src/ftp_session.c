@@ -270,8 +270,10 @@ static void ftp_client_entry(void *parameter)
     if(rc < 0)
         goto _exit;
     
-    uint32_t loption = 1;
-    ioctlsocket(session->fd, FIONBIO, &loption);
+    int flags;
+    flags = fcntl(session->fd, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    fcntl(session->fd, F_SETFL, flags);
 
     session->port_pasv_fd = -1;
     session->is_anonymous = 0;
