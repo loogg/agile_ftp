@@ -169,7 +169,7 @@ static int pwd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     char *reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
-    
+
     snprintf(reply, 1024, "257 \"%s\" is current directory.\r\n", session->currentdir);
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
@@ -200,7 +200,7 @@ static int quit_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 {
     char *reply = "221 Bye!\r\n";
     send(session->fd, reply, strlen(reply), 0);
-    
+
     return -RT_ERROR;
 }
 
@@ -220,7 +220,7 @@ static int list_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 directory \"%s\" can't open.\r\n", session->currentdir);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -275,7 +275,7 @@ static int nlist_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 directory \"%s\" can't open.\r\n", session->currentdir);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -319,7 +319,7 @@ static int build_full_path(char *buf, int bufsz, const char *path)
 
     if(ftp_normalize_path(buf) == RT_NULL)
         return -RT_ERROR;
-    
+
     return RT_EOK;
 }
 
@@ -335,7 +335,7 @@ static int cwd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 directory \"%s\" can't open.\r\n", session->currentdir);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -347,7 +347,7 @@ static int cwd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
-    
+
     snprintf(reply, 1024, "250 Changed to directory \"%s\"\r\n", session->currentdir);
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
@@ -366,7 +366,7 @@ static int cdup_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 directory \"%s\" can't open.\r\n", session->currentdir);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -378,7 +378,7 @@ static int cdup_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
-    
+
     snprintf(reply, 1024, "250 Changed to directory \"%s\"\r\n", session->currentdir);
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
@@ -399,7 +399,7 @@ static int mkd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(path, sizeof(path), "%s", session->currentdir);
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
-    
+
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
@@ -428,7 +428,7 @@ static int rmd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(path, sizeof(path), "%s", session->currentdir);
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
-    
+
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
@@ -437,7 +437,7 @@ static int rmd_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         snprintf(reply, 1024, "550 directory \"%s\" delete error.\r\n", path);
     else
         snprintf(reply, 1024, "257 directory \"%s\" successfully deleted.\r\n", path);
-    
+
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
     return RT_EOK;
@@ -457,7 +457,7 @@ static int dele_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(path, sizeof(path), "%s", session->currentdir);
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
-    
+
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
@@ -466,7 +466,7 @@ static int dele_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         snprintf(reply, 1024, "550 file \"%s\" delete error.\r\n", path);
     else
         snprintf(reply, 1024, "250 file \"%s\" successfully deleted.\r\n", path);
-    
+
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
     return RT_EOK;
@@ -487,7 +487,7 @@ static int size_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 \"%s\" : not a regular file\r\n", path);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -499,17 +499,17 @@ static int size_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 \"%s\" : not a regular file\r\n", path);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
         return RT_EOK;
     }
-    
+
     reply = rt_malloc(1024);
     if(reply == RT_NULL)
         return -RT_ERROR;
-    
+
     snprintf(reply, 1024, "213 %d\r\n", s.st_size);
     send(session->fd, reply, strlen(reply), 0);
     rt_free(reply);
@@ -528,7 +528,7 @@ static int rest_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         session->offset = 0;
         return RT_EOK;
     }
-    
+
     reply = "350 Send RETR or STOR to start transfert.\r\n";
     send(session->fd, reply, strlen(reply), 0);
     session->offset = offset;
@@ -550,14 +550,14 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(path, sizeof(path), "%s", session->currentdir);
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
-    
+
     FILE *fp = fopen(path, "rb");
     if(fp == RT_NULL)
     {
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 \"%s\" : not a regular file\r\n", path);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -642,7 +642,7 @@ static int stor_cmd_receive(int socket, uint8_t *buf, int bufsz, int timeout)
 {
     if((socket < 0) || (buf == RT_NULL) || (bufsz <= 0) || (timeout <= 0))
         return -RT_ERROR;
-    
+
     int len = 0;
     int rc = 0;
     fd_set rset;
@@ -658,11 +658,11 @@ static int stor_cmd_receive(int socket, uint8_t *buf, int bufsz, int timeout)
         rc = select(socket + 1, &rset, RT_NULL, RT_NULL, &tv);
         if(rc <= 0)
             break;
-        
+
         rc = recv(socket, buf + len, bufsz, MSG_DONTWAIT);
         if(rc <= 0)
             break;
-        
+
         len += rc;
         bufsz -= rc;
 
@@ -701,14 +701,14 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     snprintf(path, sizeof(path), "%s", session->currentdir);
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
-    
+
     FILE *fp = fopen(path, "wb");
     if(fp == RT_NULL)
     {
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
             return -RT_ERROR;
-        
+
         snprintf(reply, 1024, "550 Cannot open \"%s\" for writing.\r\n", path);
         send(session->fd, reply, strlen(reply), 0);
         rt_free(reply);
@@ -753,7 +753,7 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 
     if(result != RT_EOK)
         return -RT_ERROR;
-    
+
     reply = "226 Finished.\r\n";
     send(session->fd, reply, strlen(reply), 0);
     return RT_EOK;
