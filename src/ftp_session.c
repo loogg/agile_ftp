@@ -18,7 +18,7 @@
 #endif
 
 #ifndef FTP_SESSION_WELCOME_MSG
-#define FTP_SESSION_WELCOME_MSG		    "220 -= welcome on RT-Thread FTP server =-\r\n"
+#define FTP_SESSION_WELCOME_MSG         "220 -= welcome on RT-Thread FTP server =-\r\n"
 #endif
 
 #ifndef FTP_SESSION_TIMEOUT
@@ -40,7 +40,7 @@ int ftp_set_max_session_num(int num)
 {
     if(num <= 0)
         return -RT_ERROR;
-    
+
     ftp_max_session_num = num;
     return RT_EOK;
 }
@@ -54,7 +54,7 @@ int ftp_set_session_username(const char *username)
 {
     if(username == RT_NULL)
         return -RT_ERROR;
-    
+
     rt_strncpy(ftp_session_username, username, sizeof(ftp_session_username) - 1);
     ftp_session_username[sizeof(ftp_session_username) - 1] = '\0';
     return RT_EOK;
@@ -84,7 +84,7 @@ int ftp_set_session_welcome_msg(const char *welcome_msg)
 {
     if(welcome_msg == RT_NULL)
         return -RT_ERROR;
-    
+
     rt_strncpy(ftp_session_welcome_msg, welcome_msg, sizeof(ftp_session_welcome_msg) - 1);
     ftp_session_welcome_msg[sizeof(ftp_session_welcome_msg) - 1] = '\0';
     return RT_EOK;
@@ -119,7 +119,7 @@ static int ftp_session_read(struct ftp_session *session, uint8_t *buf, int bufsz
 {
     int bytes = 0;
     int rc = 0;
-    
+
     if(bufsz <= 0)
         return bufsz;
 
@@ -132,7 +132,7 @@ static int ftp_session_read(struct ftp_session *session, uint8_t *buf, int bufsz
         bytes += rc;
         if(bytes >= bufsz)
             break;
-        
+
         if(timeout > 0)
         {
             fd_set readset, exceptset;
@@ -168,11 +168,11 @@ static int ftp_session_process(struct ftp_session * session, char *cmd_buf)
     /* remove \r\n */
     char *ptr = cmd_buf;
     while (*ptr)
-	{
-		if ((*ptr == '\r') || (*ptr == '\n'))
+    {
+        if ((*ptr == '\r') || (*ptr == '\n'))
             *ptr = 0;
-		ptr ++;
-	}
+        ptr ++;
+    }
 
     char *cmd = cmd_buf;
     char *cmd_param = strchr(cmd, ' ');
@@ -270,7 +270,7 @@ static void ftp_client_entry(void *parameter)
     int rc = setsockopt(session->fd, IPPROTO_TCP, TCP_NODELAY, (const void *)&option, sizeof(int));
     if(rc < 0)
         goto _exit;
-    
+
     int flags;
     flags = fcntl(session->fd, F_GETFL, 0);
     flags |= O_NONBLOCK;
@@ -285,7 +285,7 @@ static void ftp_client_entry(void *parameter)
     char cmd_buf[1024];
 
     // select使用
-    fd_set readset, exceptset;   
+    fd_set readset, exceptset;
     // select超时时间
     struct timeval select_timeout;
     select_timeout.tv_sec = 1;
@@ -334,10 +334,10 @@ int ftp_session_create(int fd, struct sockaddr_in *addr, socklen_t addr_len)
 {
     if(fd < 0)
         return -RT_ERROR;
-    
+
     if(ftp_session_get_num() >= ftp_max_session_num)
         return -RT_ERROR;
-    
+
     struct ftp_session *session = rt_malloc(sizeof(struct ftp_session));
     if(session == RT_NULL)
         return -RT_ERROR;

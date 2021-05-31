@@ -13,7 +13,7 @@
 #endif
 
 static int ftp_port = FTP_DEFAULT_PORT;
-static rt_uint8_t force_restart = 0; 
+static rt_uint8_t force_restart = 0;
 
 int ftp_force_restart(void)
 {
@@ -55,17 +55,17 @@ _ftp_start:
     server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(server_fd < 0)
         goto _ftp_restart;
-    
+
     if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const void *)&enable, sizeof(enable)) < 0)
         goto _ftp_restart;
-    
+
     rt_memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(ftp_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if(bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         goto _ftp_restart;
-    
+
     if(listen(server_fd, 1) < 0)
         goto _ftp_restart;
 
