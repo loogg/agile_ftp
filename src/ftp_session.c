@@ -1,4 +1,14 @@
+#include <rtthread.h>
+
+#if RT_VER_NUM < 0x40100
 #include <dfs_posix.h>
+#include <dfs_poll.h>
+#else
+#include <dfs_file.h>
+#include <poll.h>
+#include <unistd.h>
+#endif
+
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/select.h>

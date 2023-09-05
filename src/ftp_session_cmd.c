@@ -1,4 +1,14 @@
+#include <rtthread.h>
+
+#if RT_VER_NUM < 0x40100
 #include <dfs_posix.h>
+#include <dfs_poll.h>
+#else
+#include <dfs_file.h>
+#include <poll.h>
+#include <unistd.h>
+#endif
+
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -551,8 +561,8 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
 
-    FILE *fp = fopen(path, "rb");
-    if(fp == RT_NULL)
+    int fd = open(path, O_RDONLY);
+    if(fd < 0)
     {
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
@@ -569,9 +579,8 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     int file_size = 0;
     do
     {
-        fseek(fp, 0, SEEK_END);
-        file_size = ftell(fp);
-        rewind(fp);
+        file_size = lseek(fd, 0, SEEK_END);
+        lseek(fd, 0, SEEK_SET);
         if(file_size <= 0)
             break;
 
@@ -580,7 +589,7 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 
     if(rc != RT_EOK)
     {
-        fclose(fp);
+        close(fd);
 
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
@@ -596,13 +605,13 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     reply = rt_malloc(4096);
     if(reply == RT_NULL)
     {
-        fclose(fp);
+        close(fd);
         return -RT_ERROR;
     }
 
     if((session->offset > 0) && (session->offset < file_size))
     {
-        fseek(fp, session->offset, SEEK_SET);
+        lseek(fd, session->offset, SEEK_SET);
         snprintf(reply, 4096, "150 Opening binary mode data connection for \"%s\" (%d/%d bytes).\r\n",
                  path, file_size - session->offset, file_size);
     }
@@ -615,7 +624,7 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 
     int recv_bytes = 0;
     int result = RT_EOK;
-    while((recv_bytes = fread(reply, 1, 4096, fp)) > 0)
+    while((recv_bytes = read(fd, reply, 4096)) > 0)
     {
         if(send(session->port_pasv_fd, reply, recv_bytes, 0) != recv_bytes)
         {
@@ -625,7 +634,7 @@ static int retr_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     }
 
     rt_free(reply);
-    fclose(fp);
+    close(fd);
     close(session->port_pasv_fd);
     session->port_pasv_fd = -1;
 
@@ -702,8 +711,8 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     if(build_full_path(path, sizeof(path), cmd_param) != RT_EOK)
         return -RT_ERROR;
 
-    FILE *fp = fopen(path, "wb");
-    if(fp == RT_NULL)
+    int fd = open(path, O_CREAT | O_RDWR | O_TRUNC);
+    if(fd < 0)
     {
         reply = rt_malloc(1024);
         if(reply == RT_NULL)
@@ -718,7 +727,7 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     reply = rt_malloc(4096);
     if(reply == RT_NULL)
     {
-        fclose(fp);
+        close(fd);
         return -RT_ERROR;
     }
 
@@ -737,17 +746,18 @@ static int stor_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
         }
         if(recv_bytes == 0)
             break;
-        if(fwrite(reply, recv_bytes, 1, fp) != 1)
+        if(write(fd, reply, recv_bytes) != recv_bytes)
         {
             result = -RT_ERROR;
             break;
         }
+        fsync(fd);
 
         timeout = 3000;
     }
 
     rt_free(reply);
-    fclose(fp);
+    close(fd);
     close(session->port_pasv_fd);
     session->port_pasv_fd = -1;
 
