@@ -214,6 +214,70 @@ static int quit_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     return -RT_ERROR;
 }
 
+static int list_statbuf_get(struct dirent *dirent, struct stat *s, char *buf, int bufsz)
+{
+    int ret = 0;
+    struct tm ftm;
+    struct tm ntm;
+    time_t now_time;
+
+    // file type
+    rt_memset(buf, '-', 10);
+
+    if (S_ISDIR(s->st_mode))
+        buf[0] = 'd';
+
+    if (s->st_mode & S_IRUSR)
+        buf[1] = 'r';
+    if (s->st_mode & S_IWUSR)
+        buf[2] = 'w';
+    if (s->st_mode & S_IXUSR)
+        buf[3] = 'x';
+
+    if (s->st_mode & S_IRGRP)
+        buf[4] = 'r';
+    if (s->st_mode & S_IWGRP)
+        buf[5] = 'w';
+    if (s->st_mode & S_IXGRP)
+        buf[6] = 'x';
+
+    if (s->st_mode & S_IROTH)
+        buf[7] = 'r';
+    if (s->st_mode & S_IWOTH)
+        buf[8] = 'w';
+    if (s->st_mode & S_IXOTH)
+        buf[9] = 'x';
+
+    ret += 10;
+    buf[ret++] = ' ';
+
+    // user info
+    ret += snprintf(buf + ret, bufsz - ret, "%d %s %s", s->st_nlink, "admin", "admin");
+    buf[ret++] = ' ';
+
+    // file size
+    ret += snprintf(buf + ret, bufsz - ret, "%d", s->st_size);
+    buf[ret++] = ' ';
+
+    // file date
+    gmtime_r(&s->st_mtime, &ftm);
+    now_time = time(RT_NULL);
+    gmtime_r(&now_time, &ntm);
+
+    if (ftm.tm_year == ntm.tm_year) {
+        ret += strftime(buf + ret, bufsz - ret, "%b %d %H:%M", &ftm);
+    } else {
+        ret += strftime(buf + ret, bufsz - ret, "%b %d %Y", &ftm);
+    }
+
+    buf[ret++] = ' ';
+
+    // file name
+    ret += snprintf(buf + ret, bufsz - ret, "%s\r\n", dirent->d_name);
+
+    return ret;
+}
+
 static int list_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
 {
     char *reply = RT_NULL;
@@ -243,21 +307,21 @@ static int list_cmd_fn(struct ftp_session *session, char *cmd, char *cmd_param)
     struct dirent *dirent = RT_NULL;
     char tmp[256];
     struct stat s;
-    do
-    {
+    do {
         dirent = readdir(dir);
-        if(dirent == RT_NULL)
+        if (dirent == RT_NULL)
             break;
         snprintf(tmp, sizeof(tmp), "%s/%s", session->currentdir, dirent->d_name);
         rt_memset(&s, 0, sizeof(struct stat));
-        if(stat(tmp, &s) != 0)
+        if (stat(tmp, &s) != 0)
             continue;
-        if(S_ISDIR(s.st_mode))
-            snprintf(tmp, sizeof(tmp), "drw-r--r-- 1 admin admin %d Jan 1 2020 %s\r\n", 0, dirent->d_name);
-        else
-            snprintf(tmp, sizeof(tmp), "-rw-r--r-- 1 admin admin %d Jan 1 2020 %s\r\n", s.st_size, dirent->d_name);
-        send(session->port_pasv_fd, tmp, strlen(tmp), 0);
-    }while(dirent != RT_NULL);
+
+        int stat_len = list_statbuf_get(dirent, &s, tmp, sizeof(tmp));
+        if (stat_len <= 0)
+            continue;
+
+        send(session->port_pasv_fd, tmp, stat_len, 0);
+    } while (dirent != RT_NULL);
 
     closedir(dir);
 
